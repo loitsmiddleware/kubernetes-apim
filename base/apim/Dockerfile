@@ -40,6 +40,7 @@ ARG WSO2CARBON_JKS=wso2carbon.jks
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends --no-install-suggests \
+	   wget \
        	   zip \
            unzip \
            telnet \
@@ -49,6 +50,17 @@ RUN apt-get update \
 # creates the user 
 RUN useradd --system --uid ${USER_ID} --gid 0 --create-home --home-dir ${USER_HOME} \
 	--no-log-init ${USER}
+	
+# install java
+
+RUN \
+  echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
+  add-apt-repository -y ppa:webupd8team/java && \
+  apt-get update && \
+  apt-get install -y oracle-java8-installer && \
+  rm -rf /var/lib/apt/lists/* && \
+  rm -rf /var/cache/oracle-jdk8-installer
+
 
 # copy the jdk and product packs
 COPY ${FILES}/${WSO2_SERVER_PACK} ${STARTUP_SCRIPT} ${FILES}/${JDK_ARCHIVE} ${FILES}/${JDBC_DRIVER} \
@@ -56,7 +68,8 @@ COPY ${FILES}/${WSO2_SERVER_PACK} ${STARTUP_SCRIPT} ${FILES}/${JDK_ARCHIVE} ${FI
     ${FILES}/${WSO2CARBON_JKS} sudoers change_ownership.sh ${USER_HOME}/
 
 # and creates the init script
-RUN unzip -q ${USER_HOME}/${WSO2_SERVER_PACK} -d ${USER_HOME}/ \
+RUN wget --user-agent="testuser" --referer="http://connect.wso2.com/wso2/getform/reg/new_product_download" http://dist.wso2.org/products/api-manager/2.1.0/wso2am-2.1.0.zip -P /${USER_HOME} \
+	&& unzip -q ${USER_HOME}/${WSO2_SERVER_PACK} -d ${USER_HOME}/ \
         && mkdir -p ${JAVA_HOME} \
         && tar -xf ${USER_HOME}/${JDK_ARCHIVE} -C ${JAVA_HOME} --strip-components=1 \
         && mkdir -p ${USER_HOME}/tmp \
@@ -70,7 +83,7 @@ RUN unzip -q ${USER_HOME}/${WSO2_SERVER_PACK} -d ${USER_HOME}/ \
             ${USER_HOME}/${WSO2_SERVER}-${WSO2_SERVER_VERSION}/repository/resources/security/ \
         && cp -r ${USER_HOME}/${WSO2_SERVER}-${WSO2_SERVER_VERSION}/repository/deployment/server ${USER_HOME}/tmp/ \
         && rm ${USER_HOME}/${WSO2_SERVER_PACK} \
-        && rm ${USER_HOME}/${JDK_ARCHIVE} \
+        # && rm ${USER_HOME}/${JDK_ARCHIVE} \
         && rm ${USER_HOME}/${JDBC_DRIVER} \
         && rm ${USER_HOME}/${DNS_JAVA} \
         && rm ${USER_HOME}/${KUBERNETES_MEMBERSHIP_SCHEME} \
