@@ -45,6 +45,7 @@ RUN apt-get update \
            unzip \
            telnet \
            iproute2 \
+	   software-properties-common python-software-properties \
 	   sudo && rm -rf /var/lib/apt/lists/*
 
 # creates the user 
