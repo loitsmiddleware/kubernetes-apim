@@ -62,7 +62,7 @@ RUN \
   rm -rf /var/cache/oracle-jdk8-installer
 
 # copy the jdk and product packs
-COPY ${FILES}/${WSO2_SERVER_PACK} ${STARTUP_SCRIPT} ${FILES}/${JDBC_DRIVER} \
+COPY ${FILES}/${WSO2_SERVER_PACK} ${STARTUP_SCRIPT} ${FILES}/${JDK_ARCHIVE} ${FILES} /${JDBC_DRIVER} \
         ${FILES}/${DNS_JAVA} ${FILES}/${KUBERNETES_MEMBERSHIP_SCHEME} ${FILES}/${CLIENT_TRUSTSTORE} \
         ${FILES}/${WSO2CARBON_JKS} sudoers change_ownership.sh ${USER_HOME}/
 
