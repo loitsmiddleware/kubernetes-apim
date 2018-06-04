@@ -23,6 +23,7 @@ ENV DEBIAN_FRONTEND noninteractive
 # defined arguments and defaults
 ARG USER=wso2user
 ARG USER_ID=1000000000
+
 # files
 ARG FILES=./files
 ARG USER_HOME=/home/${USER}
@@ -40,24 +41,34 @@ ARG WSO2CARBON_JKS=wso2carbon.jks
 
 RUN apt-get update \
         && apt-get install -y --no-install-recommends --no-install-suggests \
+           wget \
            zip \
            unzip \
            telnet \
            iproute2 \
+           software-properties-common python-software-properties \
       sudo && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --system --uid ${USER_ID} --gid 0 --create-home --home-dir ${USER_HOME} \
         --no-log-init ${USER}
+        
+# Install Java.
+RUN \
+  echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
+  add-apt-repository -y ppa:webupd8team/java && \
+  apt-get update && \
+  apt-get install -y oracle-java8-installer && \
+  rm -rf /var/lib/apt/lists/* && \
+  rm -rf /var/cache/oracle-jdk8-installer
 
 # copy the jdk and product packs
-COPY ${FILES}/${WSO2_SERVER_PACK} ${STARTUP_SCRIPT} ${FILES}/${JDK_ARCHIVE} ${FILES}/${JDBC_DRIVER} \
+COPY ${FILES}/${WSO2_SERVER_PACK} ${STARTUP_SCRIPT} ${FILES}/${JDBC_DRIVER} \
         ${FILES}/${DNS_JAVA} ${FILES}/${KUBERNETES_MEMBERSHIP_SCHEME} ${FILES}/${CLIENT_TRUSTSTORE} \
         ${FILES}/${WSO2CARBON_JKS} sudoers change_ownership.sh ${USER_HOME}/
 
 # and creates the init script
-RUN unzip -q ${USER_HOME}/${WSO2_SERVER_PACK} -d ${USER_HOME}/ \
-        && mkdir -p ${JAVA_HOME} \
-        && tar -xf ${USER_HOME}/${JDK_ARCHIVE} -C ${JAVA_HOME} --strip-components=1 \
+RUN wget --user-agent="testuser" --referer="http://connect.wso2.com/wso2/getform/reg/new_product_download" http://dist.wso2.org/products/api-manager/${WSO2_SERVER_VERSION}/${WSO2_SERVER_PACK} -P /${USER_HOME} \
+        && unzip -q ${USER_HOME}/${WSO2_SERVER_PACK} -d ${USER_HOME}/ \
         && mkdir -p ${USER_HOME}/tmp \
         && cp ${USER_HOME}/${JDBC_DRIVER} ${USER_HOME}/${DNS_JAVA} \
             ${USER_HOME}/${WSO2_SERVER}-${WSO2_SERVER_VERSION}/repository/components/lib/ \
@@ -69,7 +80,6 @@ RUN unzip -q ${USER_HOME}/${WSO2_SERVER_PACK} -d ${USER_HOME}/ \
             ${USER_HOME}/${WSO2_SERVER}-${WSO2_SERVER_VERSION}/repository/resources/security/ \
         && cp -r ${USER_HOME}/${WSO2_SERVER}-${WSO2_SERVER_VERSION}/repository/deployment/server ${USER_HOME}/tmp/ \
         && rm ${USER_HOME}/${WSO2_SERVER_PACK} \
-        && rm ${USER_HOME}/${JDK_ARCHIVE} \
         && mkdir -p ${USER_HOME}/scripts/ \
         && cat ${USER_HOME}/${STARTUP_SCRIPT} > ${USER_HOME}/scripts/${STARTUP_SCRIPT} \
         && rm ${USER_HOME}/${STARTUP_SCRIPT} \
@@ -87,12 +97,21 @@ RUN unzip -q ${USER_HOME}/${WSO2_SERVER_PACK} -d ${USER_HOME}/ \
         && cat ${USER_HOME}/change_ownership.sh > /bin/change_ownership.sh \
         && chmod 0755 /bin/change_ownership.sh
 
+# set the user and work directory
 USER ${USER_ID}
 WORKDIR ${USER_HOME}
 
-# set java home and path variables
-ENV HOME=${USER_HOME} JAVA_HOME=${JAVA_HOME} PATH=$JAVA_HOME/bin:$PATH USER_HOME=${USER_HOME} \
-        WSO2_SERVER=${WSO2_SERVER} WSO2_SERVER_VERSION=${WSO2_SERVER_VERSION}
+# Define commonly used JAVA_HOME variable
+ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
+
+# set environment variables
+ENV JAVA_HOME=${JAVA_HOME} \
+    PATH=$JAVA_HOME/bin:$PATH \
+    USER_HOME=${USER_HOME} \
+    WSO2_SERVER=${WSO2_SERVER} \
+    WSO2_SERVER_VERSION=${WSO2_SERVER_VERSION} \
+    WSO2_SERVER_HOME=${WSO2_SERVER_HOME} \
+    USER=${USER}
 
 # expose ports
 EXPOSE 9764 9444 7712 7612 11225 10006 11001 11501 8082 4041 18081 12501 13001 13501 14001 14501 7078 6067 12000-12005
